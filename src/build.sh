@@ -7,6 +7,7 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$HERE"
 for f in index.html engine.js map.js config.js i18n.js peerjs.min.js manifest.webmanifest icon.svg icon-192.png icon-512.png apple-touch-icon.png og.png; do cp "$MAIN/$f" "$OUT/$f"; done
 cp "$HERE/src/pro.js" "$OUT/pro.js"
+cat "$HERE"/src/arcade/*.js > "$OUT/arcade.js"
 python3 - "$OUT" <<'PY'
 import sys,re
 out=sys.argv[1]
@@ -18,6 +19,7 @@ s=re.sub(r'<meta name="twitter:[^>]*>\n','',s)
 s=re.sub(r'<meta name="description"[^>]*>\n','<meta name="description" content="מי המתחזה? פרו – גרסה מוגדלת לחברים">\n',s,1)
 s=s.replace('apple-mobile-web-app-title" content="מי המתחזה"','apple-mobile-web-app-title" content="מי המתחזה פרו"',1)
 i=s.index('<script'); s=s[:i]+'<script src="pro.js"></script>\n'+s[i:]
+j=s.rindex('</body>'); s=s[:j]+'<script src="arcade.js"></script>\n'+s[j:]
 open(p,'w',encoding='utf-8').write(s)
 m=out+'/manifest.webmanifest'; t=open(m,encoding='utf-8').read().replace('"name": "מי המתחזה?"','"name": "מי המתחזה? פרו"').replace('"short_name": "מי המתחזה"','"short_name": "מתחזה פרו"'); open(m,'w',encoding='utf-8').write(t)
 PY
