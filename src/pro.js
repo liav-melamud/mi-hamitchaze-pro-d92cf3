@@ -46,7 +46,7 @@ window.MM_PRO = true;
     'h1::after{content:" 👑 פרו";font-size:.45em;color:#ffd166;letter-spacing:1px;vertical-align:middle}',
     '@keyframes proShine{to{background-position:-200% 0}}',
     '#hostSettings{border:1px solid #ffb54788!important;box-shadow:0 0 22px #ffb54722}',
-    '#proBadge{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:linear-gradient(#3a2a08,#1f1604);border:1px solid #ffb547;color:#ffd166;border-radius:999px;padding:2px 12px;font-size:12px;font-weight:800;letter-spacing:1px;box-shadow:0 0 12px #ffb54766;pointer-events:none}',
+    '#proBadge{position:absolute;top:8px;left:10px;background:linear-gradient(#3a2a08,#1f1604);border:1px solid #ffb547;color:#ffd166;border-radius:999px;padding:2px 12px;font-size:12px;font-weight:800;letter-spacing:1px;box-shadow:0 0 12px #ffb54766;pointer-events:none}',
     '#proSide{position:fixed;left:10px;top:118px;width:268px;max-height:calc(100vh - 140px);overflow:auto;z-index:30;background:linear-gradient(#241a08,#14100a);border:1px solid #ffb547aa;border-radius:14px;padding:10px 12px;box-shadow:0 0 18px #ffb54733;text-align:right}',
     '#proSide.shut{display:none}',
     '#proFab{position:fixed;left:10px;top:74px;z-index:31;background:linear-gradient(#3a2a08,#1f1604);border:1px solid #ffb547;color:#ffd166;border-radius:999px;padding:7px 14px;font:inherit;font-weight:800;cursor:pointer;box-shadow:0 0 14px #ffb54755}',
