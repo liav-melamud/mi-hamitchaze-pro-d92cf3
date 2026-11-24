@@ -79,7 +79,7 @@ window.MM_PRO = true;
   keepWarm(); setInterval(keepWarm, 5 * 60 * 1000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) keepWarm(); });
   // ---------- מטמון לטעינה מהירה: אחרי הכניסה הראשונה האתר נפתח מהמכשיר, ומתעדכן ברקע ----------
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:') (function () { var had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener('controllerchange', function () { if (had && !window.__swr) { window.__swr = 1; location.reload(); } }); navigator.serviceWorker.register('sw.js').catch(function () {}); })();
 
   // ---------- מראה ותחושת פרו: ערכת זהב, תג כתר במשחק, ופאנל קודים בצד הלובי ----------
   var CSS = [
