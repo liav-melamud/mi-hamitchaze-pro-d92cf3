@@ -86,7 +86,6 @@ window.MM_I18N_EXTRA = {"נץ": "Hawk", "פי": "x", "צב": "Turtle", "ברק":
   var CSS = [
     'h1 span{background:linear-gradient(100deg,#ffb547,#fff1b8,#ffb547);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:proShine 3.5s linear infinite}',
     'h1::after{content:"👑 PRO";display:inline-block;margin-inline-start:12px;font-size:.36em;font-weight:900;letter-spacing:3px;color:#2a1a02;background:linear-gradient(135deg,#fff1b8,#ffb547 55%,#b5700f);border:2px solid #6b4208;border-radius:10px;padding:2px 12px;vertical-align:middle;box-shadow:0 0 14px #ffb54777;-webkit-text-fill-color:#2a1a02}',
-    '#appBox{display:none!important}',
     '@keyframes proShine{to{background-position:-200% 0}}',
     '#hostSettings{border:1px solid #ffb54788!important;box-shadow:0 0 22px #ffb54722}',
     '#proBadge{position:absolute;top:8px;left:10px;background:linear-gradient(#3a2a08,#1f1604);border:1px solid #ffb547;color:#ffd166;border-radius:999px;padding:2px 12px;font-size:12px;font-weight:800;letter-spacing:1px;box-shadow:0 0 12px #ffb54766;pointer-events:none}',

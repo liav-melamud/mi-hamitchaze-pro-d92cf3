@@ -5,7 +5,7 @@ set -e
 MAIN="$1"; [ -f "$MAIN/index.html" ] || { echo "usage: bash src/build.sh <main-site-dir>"; exit 1; }
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$HERE"
-for f in index.html engine.js map.js config.js i18n.js peerjs.min.js manifest.webmanifest icon.svg icon-192.png icon-512.png apple-touch-icon.png og.png; do cp "$MAIN/$f" "$OUT/$f"; done
+for f in index.html engine.js map.js config.js i18n.js peerjs.min.js manifest.webmanifest icon.svg icon-192.png icon-512.png apple-touch-icon.png og.png iphone.html; do cp "$MAIN/$f" "$OUT/$f"; done
 cp "$HERE"/src/icons/* "$OUT"/
 cp "$HERE/src/pro.js" "$OUT/pro.js"
 cp "$HERE/src/sw.js" "$OUT/sw.js"
