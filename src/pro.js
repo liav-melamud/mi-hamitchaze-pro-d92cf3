@@ -40,6 +40,39 @@ window.MM_PRO = true;
     ['5555', '🎪 מוד מרוץ-בלגן', 'שילוב שימושי: 3000 + 1000 – כולם מיוחדים ומהירים'],
   ];
 
+
+  // ---------- מפת פרו: "מגדל הכתר" – 15 חדרים בשלוש קומות של רשת, אולם מרכזי גדול, עמודי זהב וניאון ----------
+  (function () {
+    var X = [100, 620, 1100, 1680, 2200], Wd = [360, 360, 440, 360, 360], Y = [80, 640, 1220], Hh = [280, 300, 280];
+    var N = [['מגדל תצפית', 'מעבדת קוונטים', 'אולם הכתר', 'גן קריסטלים', 'רציף נחיתה'], ['מנוע ראשי', 'מרכז בקרה', 'לב התחנה', 'ספרייה', 'מרפאה'], ['מחסן', 'תחנת כוח', 'ארמון המראות', 'סדנה', 'מקלט']];
+    var C = [['#3b3a63', '#2d5a6a', '#5a4a22', '#2f5f4f', '#4b3050'], ['#603a30', '#2c4570', '#51402a', '#4a3a5f', '#2f5a58'], ['#4f4a36', '#5b4a2a', '#34406a', '#4a4a4a', '#3a3e56']];
+    var rooms = {}, ids = [[], [], []];
+    for (var r = 0; r < 3; r++) for (var c = 0; c < 5; c++) { var id = 'P' + (r + 1) + (c + 1); ids[r][c] = id; rooms[id] = { name: N[r][c], x: X[c], y: Y[r], w: Wd[c], h: Hh[r], c: C[r][c] }; }
+    var corr = [], cx = X.map(function (x, i) { return x + Wd[i] / 2; }), cy = Y.map(function (y, i) { return y + Hh[i] / 2; });
+    for (r = 0; r < 3; r++) for (c = 0; c < 4; c++) corr.push([ids[r][c], ids[r][c + 1], 'h', cy[r]]);
+    for (c = 0; c < 5; c++) for (r = 0; r < 2; r++) corr.push([ids[r][c], ids[r + 1][c], 'v', cx[c]]);
+    var def = {
+      id: 'mod_protower', theme: 'space', rooms: rooms, corr: corr, tasks: [], perRoom: 3,
+      vents: [{ x: 410, y: 320, net: 0 }, { x: 2000, y: 900, net: 0 }, { x: 900, y: 1450, net: 0 }, { x: 2510, y: 320, net: 1 }, { x: 150, y: 900, net: 1 }, { x: 1480, y: 1450, net: 1 }, { x: 1500, y: 320, net: 2 }, { x: 940, y: 900, net: 2 }, { x: 2510, y: 1450, net: 2 }],
+      button: { x: 1320, y: 710 }, world: { w: 2700, h: 1600 },
+      cams: [{ name: 'אולם הכתר', x: 1320, y: 230, mx: 1320, my: 92 }, { name: 'מרכז בקרה', x: 800, y: 800, mx: 800, my: 652 }, { name: 'לב התחנה', x: 1320, y: 800, mx: 1320, my: 652 }, { name: 'ארמון המראות', x: 1320, y: 1370, mx: 1320, my: 1232 }],
+      camConsole: { x: 800, y: 760 }
+    };
+    window.MM_PRO_MAPS = { mod_protower: { name: '👑 מגדל הכתר (פרו, 15 חדרים)', def: def } };
+  })();
+
+  // ---------- כפתור תלת מימד (בכל משחק) ----------
+  window.MM_V3 = false; try { window.MM_V3 = localStorage.getItem('mm_v3') === '1'; } catch (e) {}
+  // ---------- שרת האונליין: פינג כל 5 דקות כדי שיישאר ער (כל עוד האתר פתוח), וקישור מראש לשרת ----------
+  function keepWarm() {
+    var cfg = window.MM_SIGNAL; if (!cfg) return;
+    try { fetch('https://' + cfg.host + '/ice?k=' + Date.now(), { mode: 'no-cors', cache: 'no-store' }).catch(function () {}); } catch (e) {}
+  }
+  keepWarm(); setInterval(keepWarm, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) keepWarm(); });
+  // ---------- מטמון לטעינה מהירה: אחרי הכניסה הראשונה האתר נפתח מהמכשיר, ומתעדכן ברקע ----------
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () {});
+
   // ---------- מראה ותחושת פרו: ערכת זהב, תג כתר במשחק, ופאנל קודים בצד הלובי ----------
   var CSS = [
     'h1 span{background:linear-gradient(100deg,#ffb547,#fff1b8,#ffb547);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:proShine 3.5s linear infinite}',
@@ -51,6 +84,7 @@ window.MM_PRO = true;
     '#proSide.shut{display:none}',
     '#proFab{position:fixed;left:10px;top:74px;z-index:31;background:linear-gradient(#3a2a08,#1f1604);border:1px solid #ffb547;color:#ffd166;border-radius:999px;padding:7px 14px;font:inherit;font-weight:800;cursor:pointer;box-shadow:0 0 14px #ffb54755}',
     '#proFab.hidden{display:none}',
+    '#d3Btn{position:absolute;top:8px;left:84px;background:#1c1710;border:1px solid #ffb547aa;color:#ffd166;border-radius:999px;padding:2px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;pointer-events:auto}#d3Btn.on{background:#3a2c0b;box-shadow:0 0 12px #ffb54777}',
     '#proSide h3{margin:0 0 2px;font-size:16px;color:#ffd166}#proSide .ps{font-size:12px;color:#c9b684;margin:0 0 8px}',
     '#proSide .pc{display:flex;align-items:center;gap:8px;width:100%;margin:4px 0;padding:7px 9px;border-radius:10px;background:#1c1710;border:1px solid #4a3a1c;color:#eadfc4;text-align:right;cursor:pointer;font:inherit}',
     '#proSide .pc b{direction:ltr;min-width:46px;text-align:center;background:#000;border-radius:7px;padding:3px 6px;color:#ffd166;font-size:15px}',
@@ -67,6 +101,13 @@ window.MM_PRO = true;
     var hud = document.getElementById('hud');
     if (hud && !document.getElementById('proBadge')) { var b = document.createElement('div'); b.id = 'proBadge'; b.textContent = '👑 PRO'; hud.appendChild(b); }
     var pm = document.querySelector('#proCodes p.sub'); if (pm) pm.textContent = 'בלובי, בהגדרות המשחק, יש פאנל "קודי פרו" – לוחצים על קוד כדי להפעיל אותו (אפשר כמה יחד). רק המארח צריך להפעיל.';
+    if (hud && !document.getElementById('d3Btn')) {
+      var d3 = document.createElement('button'); d3.id = 'd3Btn'; d3.type = 'button';
+      var paint = function () { d3.textContent = window.MM_V3 ? '🧊 תלת מימד: פעיל' : '🧊 תלת מימד'; d3.classList.toggle('on', !!window.MM_V3); };
+      d3.onclick = function () { window.MM_V3 = !window.MM_V3; try { localStorage.setItem('mm_v3', window.MM_V3 ? '1' : '0'); } catch (e) {} paint(); d3.blur(); };
+      paint(); hud.appendChild(d3);
+      document.addEventListener('keydown', function (e) { if (e.key === '3' && !/INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '') && !hud.classList.contains('hidden')) d3.click(); });
+    }
     var inp = document.getElementById('secretCode'), grid = document.getElementById('settingsGrid');
     if (!inp || !grid) return;
     var lab = inp.closest('label'); if (lab) lab.style.display = 'none'; // במקום השדה: פאנל הקודים

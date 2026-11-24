@@ -7,6 +7,7 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$HERE"
 for f in index.html engine.js map.js config.js i18n.js peerjs.min.js manifest.webmanifest icon.svg icon-192.png icon-512.png apple-touch-icon.png og.png; do cp "$MAIN/$f" "$OUT/$f"; done
 cp "$HERE/src/pro.js" "$OUT/pro.js"
+cp "$HERE/src/sw.js" "$OUT/sw.js"
 cat "$HERE"/src/arcade/*.js > "$OUT/arcade.js"
 python3 - "$OUT" <<'PY'
 import sys,re
