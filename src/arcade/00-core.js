@@ -48,7 +48,7 @@
   #arc .arcTop button { background: #232c4a; border: 1px solid #36406a; color: #e9eef7; border-radius: 10px; padding: 7px 11px; font-size: 16px; }
   #arcCoins { background: linear-gradient(135deg, #7a5a10, #c89418); color: #fff7d6; padding: 6px 12px; border-radius: 999px; font-weight: 800; white-space: nowrap; box-shadow: 0 0 14px #ffb54755; }
   #arc .arcGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 12px; margin-top: 8px; }
-  #arc .gcard { text-align: right; background: linear-gradient(160deg, #1d2548, #121830); border: 1px solid #343f6c; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 4px; color: #e9eef7; transition: transform .15s, box-shadow .15s; cursor: pointer; }
+  #arc .gcard { text-align: start; background: linear-gradient(160deg, #1d2548, #121830); border: 1px solid #343f6c; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 4px; color: #e9eef7; transition: transform .15s, box-shadow .15s; cursor: pointer; }
   #arc .gcard:hover { transform: translateY(-3px); box-shadow: 0 8px 24px #0008, 0 0 0 1px #ffb54766; }
   #arc .gcard .gi { font-size: 38px; line-height: 1.1; }
   #arc .gcard b { font-size: 18px; } #arc .gcard small { color: #9aa6c4; font-size: 13px; } #arc .gcard em { font-style: normal; color: #ffb547; font-size: 12px; margin-top: 2px; }
@@ -77,7 +77,7 @@
     if ($('#arc')) return;
     const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
     const d = document.createElement('div'); d.id = 'arc'; d.className = 'hidden';
-    d.innerHTML = '<div class="arcBox"><div class="arcTop"><button id="arcBack" class="hidden" aria-label="חזרה">→</button><b id="arcTitle">🎰 מועדון פרו</b><span id="arcCoins"></span><button id="arcMute" aria-label="צליל">🔊</button><button id="arcX" aria-label="סגור">✖</button></div><div id="arcBody"></div></div>';
+    d.innerHTML = '<div class="arcBox"><div class="arcTop"><button id="arcBack" class="hidden" aria-label="חזרה">'+(window.MM_LANG==='en'?'←':'→')+'</button><b id="arcTitle">🎰 מועדון פרו</b><span id="arcCoins"></span><button id="arcMute" aria-label="צליל">🔊</button><button id="arcX" aria-label="סגור">✖</button></div><div id="arcBody"></div></div>';
     document.body.appendChild(d);
     const row = $('#modsBtn') && $('#modsBtn').parentNode;
     if (row) { const b = document.createElement('button'); b.className = 'link'; b.id = 'arcBtn'; b.textContent = '🎰 מועדון פרו'; b.style.fontWeight = '800'; b.style.color = 'var(--accent)'; row.insertBefore(b, row.firstChild); b.onclick = open; }

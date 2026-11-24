@@ -100,7 +100,7 @@
     var types = ['cafe', 'sec', 'elec', 'med', 'admin', 'storage', 'shield', 'comms', 'reactor', 'weapons', 'oxygen', 'nav', 'lab', 'greenhouse', 'engine'];
     Object.keys(M.ROOMS).forEach(function (k, idx) {
       var r = M.ROOMS[k];
-      try { Z.roomProps(k, r, API, idx, types[idx % types.length]); } catch (e) { console.error('props', k, e); }
+      try { Z.roomProps(k, r, API, idx, r.type || types[idx % types.length]); } catch (e) { console.error('props', k, e); }
       var lb = sprite(label(r.name, '#ffffff'), 130, 30); lb.position.set(r.cx, 72, r.y + 14); add(lb);
       if (pro) {
         [[r.x + 30, r.y + 70], [r.x + r.w - 30, r.y + 70]].forEach(function (p) { API.C(p[0], p[1], 11, 96, 0xffd166, 0, { metalness: 0.8, roughness: 0.25, emissive: 0x4a3200 }, 13); });
@@ -122,17 +122,24 @@
     built = (M.id || 'm' + W3) + ':' + (ice ? 'i' : 's');
   }
 
-  // ---- דמות: שעועית של "החלליות" עם מגן ראש, תרמיל ורגליים ----
+  // ---- דמות: אותו רחפן עגול כמו במשחק – גוף כדורי, עין גדולה ושתי אנטנות ----
   function makeBean(color) {
-    var g = new THREE.Group();
-    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.42, metalness: 0.05 }), dark = new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(0.7), roughness: 0.5 });
-    var body = new THREE.Mesh(new THREE.CapsuleGeometry(15, 24, 6, 18), mat); body.position.y = 38; g.add(body);
-    var legL = new THREE.Mesh(new THREE.CapsuleGeometry(6.5, 7, 4, 10), dark), legR = legL.clone(); legL.position.set(-8, 9, 0); legR.position.set(8, 9, 0); g.add(legL, legR);
-    var vis = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshStandardMaterial({ color: 0x9fe7ff, emissive: 0x2a7fa8, roughness: 0.08, metalness: 0.3 })); vis.scale.set(12.5, 8.5, 8); vis.position.set(0, 47, 11.5); g.add(vis);
-    var pack = new THREE.Mesh(new THREE.BoxGeometry(18, 26, 10), dark); pack.position.set(0, 36, -17); g.add(pack);
+    var g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.1 });
+    var ball = new THREE.Mesh(new THREE.SphereGeometry(18, 28, 20), mat); ball.position.y = 22; body.add(ball);
+    var shine = new THREE.Mesh(new THREE.SphereGeometry(5.5, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 })); shine.position.set(-8, 31, 11); body.add(shine);
+    var eyeMat = new THREE.MeshStandardMaterial({ color: 0xf4f7fb, roughness: 0.25 });
+    var eye = new THREE.Mesh(new THREE.SphereGeometry(8.5, 18, 14), eyeMat); eye.scale.set(1, 1, 0.55); eye.position.set(4, 24, 15.5); body.add(eye);
+    var pup = new THREE.Mesh(new THREE.SphereGeometry(4.2, 12, 10), new THREE.MeshBasicMaterial({ color: 0x141826 })); pup.position.set(6, 24, 19.6); body.add(pup);
+    var antMat = new THREE.MeshStandardMaterial({ color: 0xcfd6e4, metalness: 0.6, roughness: 0.3 });
+    [-1, 1].forEach(function (sd) {
+      var st = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 15, 6), antMat); st.position.set(sd * 9.5, 46, 0); st.rotation.z = -sd * 0.38; body.add(st);
+      var tip = new THREE.Mesh(new THREE.SphereGeometry(3.4, 10, 8), new THREE.MeshStandardMaterial({ color: sd > 0 ? 0xffd166 : 0xcfd6e4, emissive: sd > 0 ? 0x7a5a10 : 0x000000 })); tip.position.set(sd * 12.5, 54, 0); body.add(tip);
+    });
     var sh = new THREE.Mesh(new THREE.CircleGeometry(22, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.38 })); sh.rotation.x = -Math.PI / 2; sh.position.y = 0.9; g.add(sh);
-    g.userData = { body: body, legs: [legL, legR], mats: [mat, dark, vis.material, sh.material], shadow: sh };
-    g.scale.setScalar(1.25);
+    var dummy = [new THREE.Object3D(), new THREE.Object3D()];
+    g.userData = { body: body, legs: dummy, mats: [mat, antMat, eyeMat, sh.material], shadow: sh };
+    g.scale.setScalar(1.3);
     return g;
   }
   function setOpacity(g, a) { g.userData.mats.forEach(function (m, i) { if (i === 3) { m.opacity = 0.38 * a; return; } m.transparent = a < 1; m.opacity = a; }); }
@@ -192,14 +199,14 @@
       if (sp > 0.25) { var ang = Math.atan2(dx, dz), df = ang - e.head; df = Math.atan2(Math.sin(df), Math.cos(df)); e.head += df * 0.25; e.moving = Math.min(1, e.moving + 0.3); } else e.moving = Math.max(0, e.moving - 0.12);
       g.position.set(d.x, 0, d.y); g.rotation.y = e.head;
       var ph = t / 90, bob = e.moving * Math.abs(Math.sin(ph)) * 2.5, ghost = !p.alive;
-      var ud = g.userData; ud.body.position.y = 38 + bob + (ghost ? 8 + Math.sin(t / 300) * 3 : 0);
+      var ud = g.userData; ud.body.position.y = bob + (ghost ? 8 + Math.sin(t / 300) * 3 : 0);
       ud.legs[0].position.z = Math.sin(ph) * 5 * e.moving; ud.legs[1].position.z = -Math.sin(ph) * 5 * e.moving;
       ud.legs[0].visible = ud.legs[1].visible = !ghost; ud.shadow.visible = !ghost;
       setOpacity(g, ghost ? 0.45 : p.vent ? 0.3 : 1);
       // תלבושת
       var hs = p.hat | 0;
       if (e.hat !== hs) { if (e.hs) dyn.remove(e.hs); e.hs = null; e.hat = hs; var ht = hatTex(hs); if (ht) { e.hs = sprite(ht, 96, 96); dyn.add(e.hs); } }
-      var top = 46 * 1.25 + bob + (ghost ? 8 : 0);
+      var top = 52 * 1.3 + bob + (ghost ? 8 : 0);
       if (e.hs) { e.hs.position.set(d.x, top + 8, d.y); e.hs.material.opacity = ghost ? 0.5 : 1; }
       // חיית מחמד
       var pet = p.pet | 0;

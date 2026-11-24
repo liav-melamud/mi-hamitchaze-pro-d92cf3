@@ -5,7 +5,7 @@
   var rot = function (m, f) { return function (t) { f(m, t); }; };
 
   Z.roomProps = function (k, r, A, idx, fallback) {
-    var X = r.x, Y = r.y, type = TYPE_OF[k] || fallback, cx = r.cx, cy = r.cy;
+    var X = r.x, Y = r.y, type = r.type || TYPE_OF[k] || fallback, cx = r.cx, cy = r.cy;
     var glow = function (t) { return 0.6 + 0.4 * Math.sin(t / 300); };
     var screens = function (x, y, n, step, w, cols) { for (var i = 0; i < n; i++) { A.B(x + i * step, y, w, 30, 26, 0x3b4255, 0, {}); var s = A.GL(x + i * step + 4, y + 8, w - 8, 3, 18, cols[i % cols.length], 26); } };
     switch (type) {
