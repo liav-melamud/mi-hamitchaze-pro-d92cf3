@@ -63,6 +63,14 @@ window.MM_PRO = true;
 
   // ---------- כפתור תלת מימד (בכל משחק) ----------
   window.MM_V3 = false; try { window.MM_V3 = localStorage.getItem('mm_v3') === '1'; } catch (e) {}
+  var loading3d = false;
+  function load3d() { // three.js נטען רק כשמפעילים תלת מימד (כ-600KB, ואז נשמר במטמון)
+    if (loading3d || (window.MM_3D && window.MM_3D.ok) || window.MM_3D_FAIL) return; loading3d = true;
+    function add(src, cb) { var sc = document.createElement('script'); sc.src = src; sc.onload = cb; sc.onerror = function () { window.MM_3D_FAIL = true; loading3d = false; }; document.head.appendChild(sc); }
+    add('three.min.js', function () { add('threed.js', function () { loading3d = false; }); });
+  }
+  window.MM_load3d = load3d;
+  if (window.MM_V3) setTimeout(load3d, 1500);
   // ---------- שרת האונליין: פינג כל 5 דקות כדי שיישאר ער (כל עוד האתר פתוח), וקישור מראש לשרת ----------
   function keepWarm() {
     var cfg = window.MM_SIGNAL; if (!cfg) return;
@@ -104,7 +112,7 @@ window.MM_PRO = true;
     if (hud && !document.getElementById('d3Btn')) {
       var d3 = document.createElement('button'); d3.id = 'd3Btn'; d3.type = 'button';
       var paint = function () { d3.textContent = window.MM_V3 ? '🧊 תלת מימד: פעיל' : '🧊 תלת מימד'; d3.classList.toggle('on', !!window.MM_V3); };
-      d3.onclick = function () { window.MM_V3 = !window.MM_V3; try { localStorage.setItem('mm_v3', window.MM_V3 ? '1' : '0'); } catch (e) {} paint(); d3.blur(); };
+      d3.onclick = function () { window.MM_V3 = !window.MM_V3; try { localStorage.setItem('mm_v3', window.MM_V3 ? '1' : '0'); } catch (e) {} if (window.MM_V3) load3d(); paint(); d3.blur(); };
       paint(); hud.appendChild(d3);
       document.addEventListener('keydown', function (e) { if (e.key === '3' && !/INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '') && !hud.classList.contains('hidden')) d3.click(); });
     }
