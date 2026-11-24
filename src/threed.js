@@ -1,7 +1,7 @@
 // מי המתחזה? פרו – מצב תלת מימד אמיתי (three.js): מצלמה מאחורי השחקן, דמויות תלת ממדיות עם התלבושות, קירות וחדרים.
 // נטען רק כשלוחצים על "תלת מימד". משתמש במצב המשחק הקיים (S, MAP, disp) ולא משנה את חוקי המשחק או הקלט.
 (function () {
-  var Z = window.MM_3D = { ok: false };
+  var Z = window.MM_3D = { ok: false, yaw: 0, zoom: 1 };
   var R, scene, camera, cv3, built = null, staticG, dyn, lights = {};
   var players = {}, bodies = [], texCache = {}, hatCache = {}, beacons = {}, sabM = [], doorM = [], emoPool = [], bodyPool = [];
   var camPos = null, camLook = null;
@@ -44,55 +44,82 @@
       lights.d = new THREE.DirectionalLight(0xffffff, 0.9); lights.d.position.set(-300, 600, 400); scene.add(lights.d);
       lights.p = new THREE.PointLight(0xffe2a8, 1.1, 650, 1.4); scene.add(lights.p);
       staticG = new THREE.Group(); dyn = new THREE.Group(); scene.add(staticG, dyn);
+      cv3.style.pointerEvents = 'auto'; var drag = null;
+      cv3.addEventListener('pointerdown', function (e) { drag = { x: e.clientX, id: e.pointerId }; try { cv3.setPointerCapture(e.pointerId); } catch (er) {} });
+      cv3.addEventListener('pointermove', function (e) { if (!drag) return; var dx = e.clientX - drag.x; drag.x = e.clientX; Z.yaw += dx * 0.0065; if (typeof sendInput === 'function') sendInput(); });
+      cv3.addEventListener('pointerup', function () { drag = null; }); cv3.addEventListener('pointercancel', function () { drag = null; });
+      cv3.addEventListener('wheel', function (e) { Z.zoom = Math.max(0.6, Math.min(1.8, Z.zoom * (e.deltaY < 0 ? 1.08 : 0.93))); e.preventDefault(); }, { passive: false });
       Z.ok = true;
     } catch (e) { Z.ok = false; R = null; }
     return Z.ok;
   }
 
-  // ---- בניית המפה: רצפות, קירות (מרשת ההליכה), ריהוט ועמודים ----
+  // ---- בניית המפה: רצפות, קירות צבעוניים (מרשת ההליכה), וריהוט לכל חדר כמו בתצוגה הרגילה ----
+  var anims = [], hanG = null, API = null;
   function build() {
     while (staticG.children.length) { var o = staticG.children.pop(); if (o.geometry) o.geometry.dispose(); }
-    beacons = {}; dyn.children.slice().forEach(function (o) { dyn.remove(o); }); players = {}; bodyPool = []; emoPool = []; sabM = []; doorM = [];
-    var M = MAP, W3 = M.WORLD.w, H3 = M.WORLD.h, pro = /^mod_pro/.test(M.id || '');
-    var floorMat = function (col, w, h) { var t = checker('#ffffff', '#e3e3ea').clone(); t.needsUpdate = true; t.repeat.set(w / 80, h / 80); return new THREE.MeshStandardMaterial({ color: col, map: t, roughness: 0.85 }); };
-    var plane = function (x, y, w, h, col, yy) { var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), floorMat(col, w, h)); m.rotation.x = -Math.PI / 2; m.position.set(x + w / 2, yy || 0, y + h / 2); staticG.add(m); return m; };
-    M.CORRIDORS.forEach(function (c) { plane(c.x, c.y, c.w, c.h, M.theme === 'ice' ? 0x6f8296 : 0x4a5166, 0); });
-    Object.keys(M.ROOMS).forEach(function (k) { var r = M.ROOMS[k]; plane(r.x, r.y, r.w, r.h, new THREE.Color(r.c).multiplyScalar(1.5), 0.4); });
-    // קירות: כל תא שאי אפשר ללכת בו וצמוד לשטח הליכה. קירות מדרום נמוכים (כדי שהמצלמה תראה מעליהם)
+    beacons = {}; dyn.children.slice().forEach(function (o) { dyn.remove(o); }); players = {}; bodyPool = []; emoPool = []; sabM = []; doorM = []; Z.candles = []; Z.mir = []; anims = [];
+    var M = MAP, W3 = M.WORLD.w, H3 = M.WORLD.h, pro = /^mod_pro/.test(M.id || ''), ice = M.theme === 'ice';
+    var mat = function (c, o) { return new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.55, metalness: 0.15 }, o || {})); };
+    var add = function (m) { staticG.add(m); return m; };
+    API = {
+      mat: mat, add: add, anim: function (f) { anims.push(f); }, sprite: sprite, label: label, emojiTex: emojiTex, pro: pro, ice: ice,
+      B: function (x, y, w, d, h, c, e, o) { var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c, o)); m.position.set(x + w / 2, (e || 0) + h / 2, y + d / 2); return add(m); },
+      C: function (cx, cy, r, h, c, e, o, r2) { var m = new THREE.Mesh(new THREE.CylinderGeometry(r2 === undefined ? r : r2, r, h, 22), mat(c, o)); m.position.set(cx, (e || 0) + h / 2, cy); return add(m); },
+      S: function (cx, cy, r, c, e, o) { var m = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 12), mat(c, o)); m.position.set(cx, e || 0, cy); return add(m); },
+      GL: function (x, y, w, d, h, c, e) { var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color: c })); m.position.set(x + w / 2, (e || 0) + h / 2, y + d / 2); return add(m); },
+      DISC: function (cx, cy, r, c, e, op) { var m = new THREE.Mesh(new THREE.CircleGeometry(r, 28), new THREE.MeshBasicMaterial({ color: c, transparent: op !== undefined, opacity: op === undefined ? 1 : op, depthWrite: op === undefined })); m.rotation.x = -Math.PI / 2; m.position.set(cx, e || 1.2, cy); return add(m); },
+      STARS: function (x, y, w, d, n, e) { for (var i = 0; i < n; i++) { var m = new THREE.Mesh(new THREE.SphereGeometry(1.4, 5, 4), new THREE.MeshBasicMaterial({ color: 0xffffff })); m.position.set(x + (i * 37 % 100) / 100 * w, e || 2, y + (i * 61 % 100) / 100 * d); add(m); } },
+      stool: function (cx, cy, r, h, c) { return this.C(cx, cy, r, h, c); }
+    };
+    var floorMat = function (col, w, h, ccol) { var t = checker('#ffffff', ice ? '#f2f6fb' : '#dcdce6').clone(); t.needsUpdate = true; t.repeat.set(w / 80, h / 80); return new THREE.MeshStandardMaterial({ color: col, map: t, roughness: ice ? 0.35 : 0.8, metalness: ice ? 0.1 : 0 }); };
+    var plane = function (x, y, w, h, col, yy) { var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), floorMat(col, w, h)); m.rotation.x = -Math.PI / 2; m.position.set(x + w / 2, yy || 0, y + h / 2); add(m); return m; };
+    M.CORRIDORS.forEach(function (c) { plane(c.x, c.y, c.w, c.h, ice ? 0xa9bccd : 0x59627c, 0); });
+    Object.keys(M.ROOMS).forEach(function (k) { var r = M.ROOMS[k]; plane(r.x, r.y, r.w, r.h, new THREE.Color(r.c).multiplyScalar(ice ? 2.3 : 1.9), 0.4); });
+    // קירות: צבע הקיר לפי החדר שהוא צמוד אליו
     var CELL = 20, gx = Math.ceil(W3 / CELL) + 2, gy = Math.ceil(H3 / CELL) + 2, wk = new Uint8Array(gx * gy);
     for (var j = 0; j < gy; j++) for (var i = 0; i < gx; i++) wk[j * gx + i] = M.walkable(i * CELL + CELL / 2, j * CELL + CELL / 2) ? 1 : 0;
     var cells = [];
     for (j = 1; j < gy - 1; j++) for (i = 1; i < gx - 1; i++) {
-      if (wk[j * gx + i]) continue; var near = false;
-      for (var dj = -1; dj <= 1 && !near; dj++) for (var di = -1; di <= 1; di++) if (wk[(j + dj) * gx + i + di]) { near = true; break; }
-      if (near) cells.push([i, j, wk[(j - 1) * gx + i] ? 18 : 84]);
+      if (wk[j * gx + i]) continue; var near = null;
+      for (var dj = -1; dj <= 1 && !near; dj++) for (var di = -1; di <= 1; di++) if (wk[(j + dj) * gx + i + di]) { near = [i + di, j + dj]; break; }
+      if (near) { var rr = M.roomAt(near[0] * CELL + CELL / 2, near[1] * CELL + CELL / 2); cells.push([i, j, rr ? rr.c : null]); }
     }
-    var wm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: pro ? 0x5b5486 : 0x4b5a80, roughness: 0.7, metalness: 0.1 }), cells.length), mx = new THREE.Matrix4();
-    cells.forEach(function (c, n) { mx.makeScale(CELL, c[2], CELL); mx.setPosition(c[0] * CELL + CELL / 2, c[2] / 2, c[1] * CELL + CELL / 2); wm.setMatrixAt(n, mx); });
-    staticG.add(wm);
-    // ריהוט לאורך הקיר האחורי של כל חדר, ושם החדר
+    var WH = 54, wm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.15 }), cells.length), mx = new THREE.Matrix4(), cc = new THREE.Color();
+    cells.forEach(function (c, n) {
+      mx.makeScale(CELL, WH, CELL); mx.setPosition(c[0] * CELL + CELL / 2, WH / 2, c[1] * CELL + CELL / 2); wm.setMatrixAt(n, mx);
+      if (c[2]) { cc.set(c[2]); cc.offsetHSL(0, 0.06, 0.09); } else cc.set(ice ? 0xcfe0ee : 0x8089a8);
+      wm.setColorAt(n, cc);
+    });
+    add(wm);
+    // רצועת תאורה בראש הקירות
+    var tm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff }), cells.length);
+    cells.forEach(function (c, n) { mx.makeScale(CELL, 3, CELL); mx.setPosition(c[0] * CELL + CELL / 2, WH + 1.5, c[1] * CELL + CELL / 2); tm.setMatrixAt(n, mx); if (c[2]) { cc.set(c[2]); cc.offsetHSL(0, 0.3, 0.38); } else cc.set(0xdfe6ff); tm.setColorAt(n, cc); });
+    add(tm);
+    // ריהוט לכל חדר (כמו בתצוגה הרגילה), ושם החדר
+    var types = ['cafe', 'sec', 'elec', 'med', 'admin', 'storage', 'shield', 'comms', 'reactor', 'weapons', 'oxygen', 'nav', 'lab', 'greenhouse', 'engine'];
     Object.keys(M.ROOMS).forEach(function (k, idx) {
-      var r = M.ROOMS[k], col = new THREE.Color(r.c).multiplyScalar(0.9);
-      for (var q = 1; q <= 3; q++) {
-        var b = new THREE.Mesh(new THREE.BoxGeometry(46, 26, 20), new THREE.MeshStandardMaterial({ color: col, roughness: 0.5, metalness: 0.3 })); b.position.set(r.x + r.w * q / 4, 13, r.y + 46); staticG.add(b);
-        var sc = new THREE.Mesh(new THREE.PlaneGeometry(30, 12), new THREE.MeshBasicMaterial({ color: (q + idx) % 2 ? 0x59d8ff : 0x8cffb0 })); sc.position.set(r.x + r.w * q / 4, 20, r.y + 56.2); staticG.add(sc);
-      }
-      var lb = sprite(label(r.name, '#ffffff'), 150, 34); lb.position.set(r.cx, 96, r.y + 14); staticG.add(lb);
+      var r = M.ROOMS[k];
+      try { Z.roomProps(k, r, API, idx, types[idx % types.length]); } catch (e) { console.error('props', k, e); }
+      var lb = sprite(label(r.name, '#ffffff'), 130, 30); lb.position.set(r.cx, 72, r.y + 14); add(lb);
       if (pro) {
-        [[r.x + 30, r.y + 70], [r.x + r.w - 30, r.y + 70]].forEach(function (p) { var cy = new THREE.Mesh(new THREE.CylinderGeometry(11, 13, 96, 16), new THREE.MeshStandardMaterial({ color: 0xffd166, metalness: 0.8, roughness: 0.25, emissive: 0x4a3200 })); cy.position.set(p[0], 48, p[1]); staticG.add(cy); });
-        var rug = new THREE.Mesh(new THREE.PlaneGeometry(r.w * 0.55, r.h * 0.4), new THREE.MeshStandardMaterial({ color: 0xc9962b, roughness: 0.9, transparent: true, opacity: 0.45 })); rug.rotation.x = -Math.PI / 2; rug.position.set(r.cx, 1, r.cy); staticG.add(rug);
+        [[r.x + 30, r.y + 70], [r.x + r.w - 30, r.y + 70]].forEach(function (p) { API.C(p[0], p[1], 11, 96, 0xffd166, 0, { metalness: 0.8, roughness: 0.25, emissive: 0x4a3200 }, 13); });
+        API.DISC(r.cx, r.y + r.h - 70, 60, 0xc9962b, 1.5, 0.35);
       }
     });
     // כפתור חירום
-    var bb = new THREE.Mesh(new THREE.CylinderGeometry(30, 34, 14, 24), new THREE.MeshStandardMaterial({ color: 0x777c88, metalness: 0.5, roughness: 0.4 })); bb.position.set(M.BUTTON.x, 7, M.BUTTON.y); staticG.add(bb);
-    var bt = new THREE.Mesh(new THREE.CylinderGeometry(20, 22, 12, 24), new THREE.MeshStandardMaterial({ color: 0xe02828, emissive: 0x801010, roughness: 0.3 })); bt.position.set(M.BUTTON.x, 19, M.BUTTON.y); staticG.add(bt); Z.btn = bt;
-    var bl = sprite(label('חירום', '#ffdddd'), 90, 22); bl.position.set(M.BUTTON.x, 52, M.BUTTON.y); staticG.add(bl);
+    API.C(M.BUTTON.x, M.BUTTON.y, 34, 14, 0x777c88, 0, { metalness: 0.5 }, 30);
+    Z.btn = API.C(M.BUTTON.x, M.BUTTON.y, 22, 12, 0xe02828, 14, { emissive: 0x801010, roughness: 0.3 }, 20);
+    var bl = sprite(label('חירום', '#ffdddd'), 70, 17); bl.position.set(M.BUTTON.x, 52, M.BUTTON.y); add(bl);
     // פתחי אוורור
     M.VENTS.forEach(function (v) {
-      var vm = new THREE.Mesh(new THREE.BoxGeometry(46, 5, 30), new THREE.MeshStandardMaterial({ color: 0x20242e, metalness: 0.7, roughness: 0.4 })); vm.position.set(v.x, 3, v.y); staticG.add(vm);
-      for (var q2 = 0; q2 < 4; q2++) { var sl = new THREE.Mesh(new THREE.BoxGeometry(38, 1.5, 2.5), new THREE.MeshStandardMaterial({ color: 0x9aa4b8 })); sl.position.set(v.x, 6, v.y - 10 + q2 * 6.5); staticG.add(sl); }
+      API.B(v.x - 23, v.y - 15, 46, 30, 5, 0x20242e, 0, { metalness: 0.7, roughness: 0.4 });
+      for (var q2 = 0; q2 < 4; q2++) API.B(v.x - 19, v.y - 11 + q2 * 6.5, 38, 2.5, 1.5, 0x9aa4b8, 5);
     });
-    built = M.id || 'm' + W3;
+    // חנוכה: קישוטים לכל חדר (מוצגים רק כשהמצב פעיל)
+    hanG = new THREE.Group(); hanG.visible = false; staticG.add(hanG);
+    try { Z.hanukBuild(M, API, hanG); } catch (e) { console.error('hanuk', e); }
+    built = (M.id || 'm' + W3) + ':' + (ice ? 'i' : 's');
   }
 
   // ---- דמות: שעועית של "החלליות" עם מגן ראש, תרמיל ורגליים ----
@@ -129,24 +156,27 @@
 
   Z.draw = function (o) {
     if (!R && !init()) return false;
-    var S = o.S, me = o.me, cam = o.cam, t = o.t, M = MAP;
-    if (built !== (M.id || 'm' + M.WORLD.w)) build();
+    var S = o.S, me = o.me, cam = Z.dbg || o.cam, t = o.t, M = MAP;
+    if (built !== (M.id || 'm' + M.WORLD.w) + ':' + (M.theme === 'ice' ? 'i' : 's')) build();
     var w = o.W, h = o.H, pr = Math.min(o.DPR || 1, 1.6);
     if (Z._w !== w || Z._h !== h || Z._pr !== pr) { Z._w = w; Z._h = h; Z._pr = pr; R.setPixelRatio(pr); R.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
     cv3.style.display = 'block'; document.getElementById('cv').style.visibility = 'hidden';
-    var zm = Math.max(0.6, Math.min(1.6, (typeof ZOOM !== 'undefined' ? ZOOM : 1)));
-    var back = 450 / zm, up = 340 / zm;
+    var zm = Math.max(0.6, Math.min(1.8, (typeof ZOOM !== 'undefined' ? ZOOM : 1) * Z.zoom));
+    var back = 330 / zm, up = 190 / zm, yaw = Z.yaw, sy = Math.sin(yaw), cy = Math.cos(yaw);
     var tp = new THREE.Vector3(cam.x, 0, cam.y);
-    var want = new THREE.Vector3(tp.x, up, tp.z + back), look = new THREE.Vector3(tp.x, 22, tp.z - 30);
+    // מצלמה מאחורי הדמות (כמו בגוף שלישי), מביטה קדימה לאן שהיא "מסתכלת"
+    var want = new THREE.Vector3(tp.x + sy * back, up, tp.z + cy * back), look = new THREE.Vector3(tp.x - sy * 90, 30, tp.z - cy * 90);
     if (!camPos) { camPos = want.clone(); camLook = look.clone(); }
-    var k = Math.min(1, (o.dt || 0.016) * 7);
+    var k = Math.min(1, (o.dt || 0.016) * 9);
     camPos.lerp(want, k); camLook.lerp(look, k); camera.position.copy(camPos); camera.lookAt(camLook);
     lights.p.position.set(tp.x, 140, tp.z);
-    // חושך: ערפל לפי טווח הראייה
-    var d0 = camPos.distanceTo(tp);
-    if (o.noDark) scene.fog = new THREE.Fog(0x04050b, d0 + 2500, d0 + 3500);
-    else scene.fog = new THREE.Fog(0x04050b, d0 + o.vision * 0.55, d0 + o.vision * 1.12);
-    scene.background = new THREE.Color(0x04050b);
+    var d0 = camPos.distanceTo(tp), fogc = M.theme === 'ice' ? 0xc9dbe8 : 0x04050b;
+    if (o.noDark) scene.fog = new THREE.Fog(fogc, d0 + 2500, d0 + 3500);
+    else scene.fog = new THREE.Fog(fogc, d0 + o.vision * 0.6, d0 + o.vision * 1.15);
+    scene.background = new THREE.Color(fogc);
+    for (var ai = 0; ai < anims.length; ai++) anims[ai](t);
+    if (hanG) hanG.visible = !!S.hanuk;
+    if (S.hanuk || (S.candles && S.candles.length)) try { Z.hanukFrame(S, t, M, dyn, o, API); } catch (e) {}
     // כפתור חירום פועם
     if (Z.btn) Z.btn.material.emissiveIntensity = 0.6 + 0.5 * Math.sin(t / 300);
 
@@ -178,7 +208,7 @@
       // שם
       var imp = p.team === 'imp' && (p.id === me.id || me.team === 'imp' || o.reveal), txt = cs(p.color) + p.name + (o.reveal && p.role && p.id !== me.id ? ' · ' + p.role : '');
       var nk = txt + (imp ? 'r' : 'w');
-      if (e.nm !== nk) { if (e.ns) dyn.remove(e.ns); e.nm = nk; e.ns = sprite(label(txt, imp ? '#ff6b6b' : '#ffffff'), 120, 27); dyn.add(e.ns); }
+      if (e.nm !== nk) { if (e.ns) dyn.remove(e.ns); e.nm = nk; e.ns = sprite(label(txt, imp ? '#ff6b6b' : '#ffffff'), 104, 23); dyn.add(e.ns); }
       e.ns.position.set(d.x, top + 52, d.y);
       if (me.id === p.id) lights.p.position.set(d.x, 130, d.y);
     });
