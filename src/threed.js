@@ -45,8 +45,8 @@
       lights.p = new THREE.PointLight(0xffe2a8, 1.1, 650, 1.4); scene.add(lights.p);
       staticG = new THREE.Group(); dyn = new THREE.Group(); scene.add(staticG, dyn);
       cv3.style.pointerEvents = 'auto'; var drag = null;
-      cv3.addEventListener('pointerdown', function (e) { drag = { x: e.clientX, id: e.pointerId }; try { cv3.setPointerCapture(e.pointerId); } catch (er) {} });
-      cv3.addEventListener('pointermove', function (e) { if (!drag || e.pointerId !== drag.id) return; var dx = e.clientX - drag.x; drag.x = e.clientX; Z.yaw -= dx * (2.4 / Math.max(500, cv3.clientWidth)); if (typeof sendInput === 'function') sendInput(); }); // ימינה = פנייה ימינה; גרירה על כל רוחב המסך ≈ 140 מעלות
+      cv3.addEventListener('pointerdown', function (e) { if (e.pointerType === 'touch' && e.clientX <= innerWidth * 0.55) return; /* צד שמאל = ג'ויסטיק */ drag = { x: e.clientX, id: e.pointerId }; try { cv3.setPointerCapture(e.pointerId); } catch (er) {} });
+      cv3.addEventListener('pointermove', function (e) { if (!drag || e.pointerId !== drag.id) return; var dx = e.clientX - drag.x; drag.x = e.clientX; Z.yaw -= dx * (3.4 / Math.max(500, cv3.clientWidth)); if (typeof sendInput === 'function') sendInput(); }); // ימינה = פנייה ימינה; גרירה על כל רוחב המסך ≈ 195 מעלות
       cv3.addEventListener('pointerup', function () { drag = null; }); cv3.addEventListener('pointercancel', function () { drag = null; });
       cv3.addEventListener('wheel', function (e) { Z.zoom = Math.max(0.6, Math.min(1.8, Z.zoom * (e.deltaY < 0 ? 1.08 : 0.93))); e.preventDefault(); }, { passive: false });
       Z.ok = true;
@@ -78,7 +78,7 @@
     Object.keys(M.ROOMS).forEach(function (k) { var r = M.ROOMS[k]; plane(r.x, r.y, r.w, r.h, new THREE.Color(r.c).multiplyScalar(ice ? 2.3 : 1.9), 0.4); });
     // קירות: צבע הקיר לפי החדר שהוא צמוד אליו
     var CELL = 20, gx = Math.ceil(W3 / CELL) + 2, gy = Math.ceil(H3 / CELL) + 2, wk = new Uint8Array(gx * gy);
-    for (var j = 0; j < gy; j++) for (var i = 0; i < gx; i++) wk[j * gx + i] = M.walkable(i * CELL + CELL / 2, j * CELL + CELL / 2) ? 1 : 0;
+    for (var j = 0; j < gy; j++) for (var i = 0; i < gx; i++) wk[j * gx + i] = M.walkable(i * CELL + CELL / 2, j * CELL + CELL / 2, -8) ? 1 : 0; // -8: הקירות עומדים בקצה האמיתי של החדר, לא בתוך השטח שהשחקן יכול להגיע אליו
     var cells = [];
     for (j = 1; j < gy - 1; j++) for (i = 1; i < gx - 1; i++) {
       if (wk[j * gx + i]) continue; var near = null;
@@ -174,7 +174,8 @@
     // מצלמה מאחורי הדמות (כמו בגוף שלישי), מביטה קדימה לאן שהיא "מסתכלת"
     var eye = Z.view !== 'out';
     var want = new THREE.Vector3(tp.x + sy * back, up, tp.z + cy * back), look = new THREE.Vector3(tp.x - sy * 90, 30, tp.z - cy * 90);
-    if (eye) { want.set(tp.x - sy * 12, 44, tp.z - cy * 12); look.set(tp.x - sy * 220, 40, tp.z - cy * 220); }
+    if (eye) { var bk = 0; for (var d = 42; d > 0; d -= 6) if (M.walkable(tp.x + sy * d, tp.z + cy * d, 4)) { bk = d; break; } // צעד קטן אחורה כשיש מקום, כדי לא להידבק לקיר שמולך
+      want.set(tp.x + sy * bk, 46, tp.z + cy * bk); look.set(tp.x - sy * 220, 36, tp.z - cy * 220); }
     var fovW = eye ? 72 : 52; if (camera.fov !== fovW) { camera.fov = fovW; camera.updateProjectionMatrix(); }
     if (!camPos) { camPos = want.clone(); camLook = look.clone(); }
     var k = eye ? 1 : Math.min(1, (o.dt || 0.016) * 9);
