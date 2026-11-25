@@ -1,7 +1,7 @@
 // מי המתחזה? פרו – מצב תלת מימד אמיתי (three.js): מצלמה מאחורי השחקן, דמויות תלת ממדיות עם התלבושות, קירות וחדרים.
 // נטען רק כשלוחצים על "תלת מימד". משתמש במצב המשחק הקיים (S, MAP, disp) ולא משנה את חוקי המשחק או הקלט.
 (function () {
-  var Z = window.MM_3D = { ok: false, yaw: 0, zoom: 1 };
+  var Z = window.MM_3D = { ok: false, yaw: 0, zoom: 1, view: 'eye' }; // view: 'eye' = מבט מהעין של הדמות (ברירת מחדל), 'out' = מבחוץ (F3)
   var R, scene, camera, cv3, built = null, staticG, dyn, lights = {};
   var players = {}, bodies = [], texCache = {}, hatCache = {}, beacons = {}, sabM = [], doorM = [], emoPool = [], bodyPool = [];
   var camPos = null, camLook = null;
@@ -172,9 +172,12 @@
     var back = 330 / zm, up = 190 / zm, yaw = Z.yaw, sy = Math.sin(yaw), cy = Math.cos(yaw);
     var tp = new THREE.Vector3(cam.x, 0, cam.y);
     // מצלמה מאחורי הדמות (כמו בגוף שלישי), מביטה קדימה לאן שהיא "מסתכלת"
+    var eye = Z.view !== 'out';
     var want = new THREE.Vector3(tp.x + sy * back, up, tp.z + cy * back), look = new THREE.Vector3(tp.x - sy * 90, 30, tp.z - cy * 90);
+    if (eye) { want.set(tp.x - sy * 12, 44, tp.z - cy * 12); look.set(tp.x - sy * 220, 40, tp.z - cy * 220); }
+    var fovW = eye ? 72 : 52; if (camera.fov !== fovW) { camera.fov = fovW; camera.updateProjectionMatrix(); }
     if (!camPos) { camPos = want.clone(); camLook = look.clone(); }
-    var k = Math.min(1, (o.dt || 0.016) * 9);
+    var k = eye ? 1 : Math.min(1, (o.dt || 0.016) * 9);
     camPos.lerp(want, k); camLook.lerp(look, k); camera.position.copy(camPos); camera.lookAt(camLook);
     lights.p.position.set(tp.x, 140, tp.z);
     var d0 = camPos.distanceTo(tp), fogc = M.theme === 'ice' ? 0xc9dbe8 : 0x04050b;
@@ -193,7 +196,7 @@
       var d = o.disp[p.id]; if (!d) return;
       if (!o.inView(p) && !S.settings.reveal) { if (players[p.id]) players[p.id].g.visible = false; return; }
       seen[p.id] = 1;
-      var e = getPlayer(p), g = e.g; g.visible = true;
+      var e = getPlayer(p), g = e.g; g.visible = !(eye && p.id === me.id);
       var dx = e.lx === null ? 0 : d.x - e.lx, dz = e.lx === null ? 0 : d.y - e.lz; e.lx = d.x; e.lz = d.y;
       var sp = Math.hypot(dx, dz);
       if (sp > 0.25) { var ang = Math.atan2(dx, dz), df = ang - e.head; df = Math.atan2(Math.sin(df), Math.cos(df)); e.head += df * 0.25; e.moving = Math.min(1, e.moving + 0.3); } else e.moving = Math.max(0, e.moving - 0.12);
@@ -217,7 +220,7 @@
       var nk = txt + (imp ? 'r' : 'w');
       if (e.nm !== nk) { if (e.ns) dyn.remove(e.ns); e.nm = nk; e.ns = sprite(label(txt, imp ? '#ff6b6b' : '#ffffff'), 104, 23); dyn.add(e.ns); }
       e.ns.position.set(d.x, top + 52, d.y);
-      if (me.id === p.id) lights.p.position.set(d.x, 130, d.y);
+      if (me.id === p.id) { lights.p.position.set(d.x, 130, d.y); if (eye) { if (e.hs) e.hs.position.y = -999; if (e.ns) e.ns.position.y = -999; if (e.ps) e.ps.position.y = -999; } }
     });
     Object.keys(players).forEach(function (id) { if (!seen[id]) { var e = players[id]; if (e.g) e.g.visible = false; if (e.hs) e.hs.visible = false; if (e.ns) e.ns.visible = false; if (e.ps) e.ps.visible = false; } else { var e2 = players[id]; if (e2.hs) e2.hs.visible = true; if (e2.ns) e2.ns.visible = true; if (e2.ps) e2.ps.visible = true; } });
 
