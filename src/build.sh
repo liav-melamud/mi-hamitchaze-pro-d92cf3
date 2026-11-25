@@ -7,7 +7,7 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$HERE"
 for f in index.html engine.js map.js config.js i18n.js peerjs.min.js manifest.webmanifest icon.svg icon-192.png icon-512.png apple-touch-icon.png og.png iphone.html; do cp "$MAIN/$f" "$OUT/$f"; done
 cp "$HERE"/src/icons/* "$OUT"/
-cp "$HERE/src/pro.js" "$OUT/pro.js"
+cat "$HERE/src/pro.js" "$HERE/src/music.js" > "$OUT/pro.js"
 cp "$HERE/src/sw.js" "$OUT/sw.js"
 cat "$HERE/src/threed.js" "$HERE/src/threed-props.js" > "$OUT/threed.js"
 cat "$HERE"/src/arcade/*.js > "$OUT/arcade.js"
