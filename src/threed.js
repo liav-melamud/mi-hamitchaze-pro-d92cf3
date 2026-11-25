@@ -172,6 +172,11 @@
     var back = 330 / zm, up = 190 / zm, yaw = Z.yaw, sy = Math.sin(yaw), cy = Math.cos(yaw);
     var tp = new THREE.Vector3(cam.x, 0, cam.y);
     // מצלמה מאחורי הדמות (כמו בגוף שלישי), מביטה קדימה לאן שהיא "מסתכלת"
+    // מקשי ימינה/שמאלה מסובבים את המבט (לא בזמן מיני-משחק)
+    if (S.phase === 'play' && typeof keys !== 'undefined' && (typeof miniOpen === 'undefined' || miniOpen === null)) {
+      var turn = (keys.has(KEYS.left) || keys.has('ArrowLeft') ? 1 : 0) - (keys.has(KEYS.right) || keys.has('ArrowRight') ? 1 : 0);
+      if (turn) { yaw = Z.yaw += turn * 2.4 * Math.min(0.05, o.dt || 0.016); sy = Math.sin(yaw); cy = Math.cos(yaw); if (typeof sendInput === 'function') sendInput(); }
+    }
     var eye = Z.view !== 'out';
     var want = new THREE.Vector3(tp.x + sy * back, up, tp.z + cy * back), look = new THREE.Vector3(tp.x - sy * 90, 30, tp.z - cy * 90);
     if (eye) { var bk = 0; for (var d = 42; d > 0; d -= 6) if (M.walkable(tp.x + sy * d, tp.z + cy * d, 4)) { bk = d; break; } // צעד קטן אחורה כשיש מקום, כדי לא להידבק לקיר שמולך
