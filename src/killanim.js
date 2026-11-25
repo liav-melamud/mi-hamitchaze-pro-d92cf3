@@ -58,8 +58,9 @@
     if (st === 'tether' && T > 1.2) vx -= W * 0.05 * ease((T - 1.25) / 0.6) * (T < 2 ? 1 : 0);
     if (hit) { vx += Math.sin(T * 90) * 9; vs = 0.86 + 0.12 * Math.sin(T * 60); }
     if (T >= 2.0) { var q = T - 2.0; vx += q * q * W * 1.1; vy -= q * H * 0.18; rotV = q * 13; ghost = true; vs = 1 - q * 0.25; }
-    drone(kx, ky, sc, kRot, kd.by.color, kd.by.hat, 1, false);
-    drone(vx, vy, sc * vs, rotV, kd.me.color, kd.me.hat, -1, ghost);
+    var in3d = false;
+    try { in3d = !!(window.MM_KILL3D && window.MM_KILL3D(g, W, H, kd, { x: kx, y: ky, sc: sc, rot: kRot }, { x: vx, y: vy, sc: sc * vs, rot: rotV, ghost: ghost })); } catch (e) { console.error(e); }
+    if (!in3d) { drone(kx, ky, sc, kRot, kd.by.color, kd.by.hat, 1, false); drone(vx, vy, sc * vs, rotV, kd.me.color, kd.me.hat, -1, ghost); }
     // אפקט לפי הסגנון
     if (st === 'slash' && T > 1.35 && T < 2.2) { var p = cl((T - 1.35) / 0.2); g.strokeStyle = '#fff'; g.lineWidth = 14; g.lineCap = 'round'; g.shadowColor = '#e1141b'; g.shadowBlur = 20;
       g.beginPath(); g.moveTo(cx - 90 * sc * p, cy - 70 * sc * p); g.lineTo(cx + 90 * sc * p, cy + 70 * sc * p); g.stroke(); g.beginPath(); g.moveTo(cx + 90 * sc * p, cy - 70 * sc * p); g.lineTo(cx - 90 * sc * p, cy + 70 * sc * p); g.stroke(); g.shadowBlur = 0; }

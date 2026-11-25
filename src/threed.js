@@ -45,7 +45,7 @@
       lights.p = new THREE.PointLight(0xffe2a8, 1.1, 650, 1.4); scene.add(lights.p);
       staticG = new THREE.Group(); dyn = new THREE.Group(); scene.add(staticG, dyn);
       cv3.style.pointerEvents = 'auto'; var drag = null;
-      cv3.addEventListener('pointerdown', function (e) { if (e.pointerType === 'touch' && (window.MM_JOYPOS ? Math.hypot(e.clientX - window.MM_JOYPOS.x * innerWidth, e.clientY - window.MM_JOYPOS.y * innerHeight) <= 110 : e.clientX <= innerWidth * 0.55)) return; /* צד שמאל = ג'ויסטיק */ if (e.pointerType === 'mouse' && e.button !== 0) return; e.preventDefault(); drag = { x: e.clientX, id: e.pointerId }; try { cv3.setPointerCapture(e.pointerId); } catch (er) {} });
+      cv3.addEventListener('pointerdown', function (e) { if (e.pointerType === 'touch' && !meetOn && (window.MM_JOYPOS ? Math.hypot(e.clientX - window.MM_JOYPOS.x * innerWidth, e.clientY - window.MM_JOYPOS.y * innerHeight) <= 110 : e.clientX <= innerWidth * 0.55)) return; /* צד שמאל = ג'ויסטיק */ if (e.pointerType === 'mouse' && e.button !== 0) return; e.preventDefault(); drag = { x: e.clientX, id: e.pointerId }; try { cv3.setPointerCapture(e.pointerId); } catch (er) {} });
       cv3.addEventListener('pointermove', function (e) { if (!drag || e.pointerId !== drag.id) return; if (e.pointerType === 'mouse' && !(e.buttons & 1)) { drag = null; return; } var dx = e.clientX - drag.x; drag.x = e.clientX; Z.yaw -= dx * (3.4 / Math.max(500, cv3.clientWidth)); if (typeof sendInput === 'function') sendInput(); }); // ימינה = פנייה ימינה; גרירה על כל רוחב המסך ≈ 195 מעלות
       cv3.addEventListener('pointerup', function () { drag = null; }); cv3.addEventListener('pointercancel', function () { drag = null; });
       cv3.addEventListener('lostpointercapture', function () { drag = null; }); window.addEventListener('blur', function () { drag = null; }); cv3.addEventListener('contextmenu', function (e) { e.preventDefault(); drag = null; }); cv3.style.userSelect = 'none';
@@ -283,6 +283,96 @@
     R.render(scene, camera);
     return true;
   };
+  // ---- פגישה בתלת מימד: כולם עומדים במעגל ליד כפתור החירום, ומסך ההצבעה מרחף מולם ----
+  var meetOn = false, meetYaw = 0, meetLast = 0, ticks = {}, peek = null;
+  function meetUI() {
+    if (peek) return;
+    var st = document.createElement('style');
+    st.textContent = 'body.m3d #meeting{background:transparent;pointer-events:none;align-items:flex-start;padding:10px}' +
+      'body.m3d #meeting .card{pointer-events:auto;width:min(640px,96%);max-height:62vh;background:rgba(14,30,60,.86);border:2px solid #5fd4ff;box-shadow:0 0 28px rgba(95,212,255,.55),0 26px 40px rgba(0,0,0,.45);animation:mmFloat 4s ease-in-out infinite}' +
+      '@media (max-height:520px){body.m3d #meeting .card{max-height:74vh;padding:12px}}' +
+      'body.m3d #chatbox{height:74px;min-height:0}body.m3d #msub{margin-bottom:8px}' +
+      '@keyframes mmFloat{50%{transform:translateY(7px)}}' +
+      'body.m3d.m3d-peek #meeting .card{display:none}' +
+      '#peekBtn{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:21;display:none;background:#12648a;color:#fff;font-weight:700;border:2px solid #5fd4ff;white-space:nowrap}' +
+      'body.m3d #peekBtn{display:block}';
+    document.head.appendChild(st);
+    peek = document.createElement('button'); peek.id = 'peekBtn'; peek.type = 'button';
+    peek.onclick = function () { document.body.classList.toggle('m3d-peek'); paintPeek(); peek.blur(); };
+    document.body.appendChild(peek);
+  }
+  function paintPeek() { var t = document.body.classList.contains('m3d-peek') ? '📺 המסך הגדול – להצביע' : '👀 להסתכל מסביב'; if (peek.dataset.t !== t) { peek.dataset.t = t; peek.textContent = t; } }
+  function meetStart(S) {
+    meetOn = true; meetYaw = Z.yaw; meetLast = 0; camPos = null; meetUI(); document.body.classList.add('m3d'); document.body.classList.remove('m3d-peek'); paintPeek();
+    var seats = seating(S), my = seats.map[S.me.id] || seats.first;
+    Z.yaw = Math.atan2(my.x - seats.cx, my.z - seats.cz); // פונים אל מרכז המעגל
+  }
+  function meetEnd() {
+    meetOn = false; Z.yaw = meetYaw; camPos = null; document.body.classList.remove('m3d', 'm3d-peek');
+    Object.keys(ticks).forEach(function (i) { ticks[i].visible = false; });
+  }
+  function seating(S) { // אותו סדר ישיבה אצל כל השחקנים
+    var list = S.players.filter(function (p) { return !p.spec; }).sort(function (a, b) { return String(a.id) < String(b.id) ? -1 : 1; });
+    var M = MAP, B = M.BUTTON, rad = Math.max(135, list.length * 62 / (2 * Math.PI)), rm = M.roomAt(B.x, B.y), cx = B.x, cz = B.y;
+    if (rm) { // כשהכפתור צמוד לקיר, מזיזים את המעגל פנימה לתוך החדר
+      var pad = rad + 24;
+      cx = rm.w > pad * 2 ? Math.max(rm.x + pad, Math.min(rm.x + rm.w - pad, cx)) : rm.x + rm.w / 2;
+      cz = rm.h > pad * 2 ? Math.max(rm.y + pad, Math.min(rm.y + rm.h - pad, cz)) : rm.y + rm.h / 2;
+      rad = Math.max(60, Math.min(rad, rm.w / 2 - 24, rm.h / 2 - 24));
+    }
+    var map = {}, first = null;
+    list.forEach(function (p, i) { var a = i / list.length * Math.PI * 2, st = map[p.id] = { x: cx + Math.sin(a) * rad, z: cz + Math.cos(a) * rad }; if (!first) first = st; });
+    return { list: list, map: map, cx: cx, cz: cz, rad: rad, first: first || { x: cx, z: cz + rad } };
+  }
+  function drawMeeting(S, t, W, H) {
+    var M = MAP;
+    if (built !== (M.id || 'm' + M.WORLD.w) + ':' + (M.theme === 'ice' ? 'i' : 's')) build();
+    var pr = Math.min(window.devicePixelRatio || 1, 1.6);
+    if (Z._w !== W || Z._h !== H || Z._pr !== pr) { Z._w = W; Z._h = H; Z._pr = pr; R.setPixelRatio(pr); R.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
+    cv3.style.display = 'block'; document.getElementById('cv').style.visibility = 'hidden';
+    var seats = seating(S), my = seats.map[S.me.id] || seats.first, sy = Math.sin(Z.yaw), cy = Math.cos(Z.yaw);
+    if (camera.fov !== 72) { camera.fov = 72; camera.updateProjectionMatrix(); }
+    var ex = my.x, ez = my.z; for (var d = 78; d > 0; d -= 6) if (M.walkable(my.x + (my.x - seats.cx) / seats.rad * d, my.z + (my.z - seats.cz) / seats.rad * d, 4)) { ex = my.x + (my.x - seats.cx) / seats.rad * d; ez = my.z + (my.z - seats.cz) / seats.rad * d; break; }
+    camera.position.set(ex, 118, ez); camera.lookAt(ex - sy * 200, 92, ez - cy * 200);
+    var fogc = M.theme === 'ice' ? 0xc9dbe8 : 0x04050b; scene.fog = new THREE.Fog(fogc, 1600, 2600); scene.background = new THREE.Color(fogc);
+    lights.p.position.set(seats.cx, 150, seats.cz);
+    for (var ai = 0; ai < anims.length; ai++) anims[ai](t);
+    if (hanG) hanG.visible = !!S.hanuk;
+    if (Z.btn) Z.btn.material.emissiveIntensity = 0.6 + 0.5 * Math.sin(t / 300);
+    [bodyPool, emoPool, sabM, doorM].forEach(function (a) { a.forEach(function (m) { if (m) m.visible = false; }); });
+    Object.keys(beacons).forEach(function (i) { beacons[i].visible = false; });
+    var voted = (S.meeting && S.meeting.voted) || [], here = {};
+    seats.list.forEach(function (p) {
+      var st = seats.map[p.id], e = getPlayer(p), mine = p.id === S.me.id, show = !mine && (p.alive || !S.me.alive);
+      here[p.id] = show;
+      e.g.visible = show; e.g.position.set(st.x, 0, st.z); e.head = Math.atan2(seats.cx - st.x, seats.cz - st.z); e.g.rotation.y = e.head; e.lx = null; e.moving = 0;
+      e.g.userData.body.position.y = p.alive ? 0 : 8; e.g.userData.shadow.visible = p.alive; setOpacity(e.g, p.alive ? 1 : 0.45);
+      var hs = p.hat | 0;
+      if (e.hat !== hs) { if (e.hs) dyn.remove(e.hs); e.hs = null; e.hat = hs; var ht = hatTex(hs); if (ht) { e.hs = sprite(ht, 96, 96); dyn.add(e.hs); } }
+      var nk = p.name + p.color + 'm';
+      if (e.nm !== nk) { if (e.ns) dyn.remove(e.ns); e.nm = nk; e.ns = sprite(label(cs(p.color) + p.name, '#ffffff'), 76, 17); dyn.add(e.ns); }
+      var top = 52 * 1.3;
+      if (e.hs) { e.hs.position.set(st.x, top + 8, st.z); e.hs.visible = show; }
+      e.ns.position.set(st.x, top + 26, st.z); e.ns.visible = show;
+      if (e.ps) e.ps.visible = false;
+      var tk = ticks[p.id]; if (!tk) { tk = ticks[p.id] = sprite(emojiTex('✅'), 22, 22); }
+      if (tk.parent !== dyn) dyn.add(tk);
+      tk.position.set(st.x, top + 48, st.z); tk.visible = show && voted.indexOf(p.id) >= 0;
+    });
+    Object.keys(players).forEach(function (id) { if (!here[id]) { var e = players[id]; [e.g, e.hs, e.ns, e.ps].forEach(function (o) { if (o) o.visible = false; }); } });
+    R.render(scene, camera);
+  }
+  function meetLoop(t) {
+    requestAnimationFrame(meetLoop);
+    var s = typeof S !== 'undefined' ? S : null, want = !!(window.MM_V3 && Z.ok && R && s && s.phase === 'meeting');
+    if (!want) { if (meetOn) meetEnd(); return; }
+    if (meetOn && t - meetLast < 30) return;
+    try { if (!meetOn) meetStart(s); meetLast = t; drawMeeting(s, t, innerWidth, innerHeight); paintPeek(); } catch (e) { console.error('meet3d', e); meetEnd(); Z.hide(); Z.ok = false; }
+  }
+  requestAnimationFrame(meetLoop);
+  Z.meetFrame = meetLoop;
+
+  Z.kit = { makeBean: makeBean, sprite: sprite, label: label, hatTex: hatTex, setOpacity: setOpacity };
   Z.reset = function () { camPos = null; built = null; };
   init();
 })();
