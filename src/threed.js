@@ -46,7 +46,7 @@
       staticG = new THREE.Group(); dyn = new THREE.Group(); scene.add(staticG, dyn);
       cv3.style.pointerEvents = 'auto'; var drag = null;
       cv3.addEventListener('pointerdown', function (e) { drag = { x: e.clientX, id: e.pointerId }; try { cv3.setPointerCapture(e.pointerId); } catch (er) {} });
-      cv3.addEventListener('pointermove', function (e) { if (!drag) return; var dx = e.clientX - drag.x; drag.x = e.clientX; Z.yaw += dx * 0.0065; if (typeof sendInput === 'function') sendInput(); });
+      cv3.addEventListener('pointermove', function (e) { if (!drag || e.pointerId !== drag.id) return; var dx = e.clientX - drag.x; drag.x = e.clientX; Z.yaw -= dx * (2.4 / Math.max(500, cv3.clientWidth)); if (typeof sendInput === 'function') sendInput(); }); // ימינה = פנייה ימינה; גרירה על כל רוחב המסך ≈ 140 מעלות
       cv3.addEventListener('pointerup', function () { drag = null; }); cv3.addEventListener('pointercancel', function () { drag = null; });
       cv3.addEventListener('wheel', function (e) { Z.zoom = Math.max(0.6, Math.min(1.8, Z.zoom * (e.deltaY < 0 ? 1.08 : 0.93))); e.preventDefault(); }, { passive: false });
       Z.ok = true;
