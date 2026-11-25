@@ -173,7 +173,7 @@
     var tp = new THREE.Vector3(cam.x, 0, cam.y);
     // מצלמה מאחורי הדמות (כמו בגוף שלישי), מביטה קדימה לאן שהיא "מסתכלת"
     // מקשי ימינה/שמאלה מסובבים את המבט (לא בזמן מיני-משחק)
-    if (S.phase === 'play' && typeof keys !== 'undefined' && (typeof miniOpen === 'undefined' || miniOpen === null)) {
+    if (window.MM_TURN !== false && S.phase === 'play' && typeof keys !== 'undefined' && (typeof miniOpen === 'undefined' || miniOpen === null)) {
       var turn = (keys.has(KEYS.left) || keys.has('ArrowLeft') ? 1 : 0) - (keys.has(KEYS.right) || keys.has('ArrowRight') ? 1 : 0);
       if (turn) { yaw = Z.yaw += turn * 2.4 * Math.min(0.05, o.dt || 0.016); sy = Math.sin(yaw); cy = Math.cos(yaw); if (typeof sendInput === 'function') sendInput(); }
     }
