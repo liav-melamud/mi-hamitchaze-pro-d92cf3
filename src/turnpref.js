@@ -6,7 +6,7 @@
     var after = document.getElementById('notifMode'); if (!after || document.getElementById('turnMode')) return;
     var row = document.createElement('div'); row.className = 'setrow';
     var lab = document.createElement('label'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.id = 'turnMode'; cb.checked = window.MM_TURN;
-    lab.appendChild(cb); lab.appendChild(document.createTextNode(' ' + (window.MM_LANG === 'en' ? '🧊 3D: left/right keys turn the view (off = step sideways)' : '🧊 תלת מימד: ימינה/שמאלה מסובבים את המבט (כבוי = הולכים הצידה)')));
+    lab.appendChild(cb); lab.appendChild(document.createTextNode(' ' + (window.MM_LANG === 'en' ? '🧊 3D: ← → arrows turn the view, A/D step sideways (off = arrows also step sideways)' : '🧊 תלת מימד: החצים ← → מסובבים את המבט, A ו-D הולכים הצידה (כבוי = גם החצים הולכים הצידה)')));
     row.appendChild(lab); after.closest('.setrow').insertAdjacentElement('afterend', row);
     cb.onchange = function () { window.MM_TURN = cb.checked; try { localStorage.setItem('mm_turnkeys', cb.checked ? '1' : '0'); } catch (e) {} if (typeof sendInput === 'function') sendInput(); };
   }

@@ -45,9 +45,10 @@
       lights.p = new THREE.PointLight(0xffe2a8, 1.1, 650, 1.4); scene.add(lights.p);
       staticG = new THREE.Group(); dyn = new THREE.Group(); scene.add(staticG, dyn);
       cv3.style.pointerEvents = 'auto'; var drag = null;
-      cv3.addEventListener('pointerdown', function (e) { if (e.pointerType === 'touch' && e.clientX <= innerWidth * 0.55) return; /* צד שמאל = ג'ויסטיק */ drag = { x: e.clientX, id: e.pointerId }; try { cv3.setPointerCapture(e.pointerId); } catch (er) {} });
-      cv3.addEventListener('pointermove', function (e) { if (!drag || e.pointerId !== drag.id) return; var dx = e.clientX - drag.x; drag.x = e.clientX; Z.yaw -= dx * (3.4 / Math.max(500, cv3.clientWidth)); if (typeof sendInput === 'function') sendInput(); }); // ימינה = פנייה ימינה; גרירה על כל רוחב המסך ≈ 195 מעלות
+      cv3.addEventListener('pointerdown', function (e) { if (e.pointerType === 'touch' && e.clientX <= innerWidth * 0.55) return; /* צד שמאל = ג'ויסטיק */ if (e.pointerType === 'mouse' && e.button !== 0) return; e.preventDefault(); drag = { x: e.clientX, id: e.pointerId }; try { cv3.setPointerCapture(e.pointerId); } catch (er) {} });
+      cv3.addEventListener('pointermove', function (e) { if (!drag || e.pointerId !== drag.id) return; if (e.pointerType === 'mouse' && !(e.buttons & 1)) { drag = null; return; } var dx = e.clientX - drag.x; drag.x = e.clientX; Z.yaw -= dx * (3.4 / Math.max(500, cv3.clientWidth)); if (typeof sendInput === 'function') sendInput(); }); // ימינה = פנייה ימינה; גרירה על כל רוחב המסך ≈ 195 מעלות
       cv3.addEventListener('pointerup', function () { drag = null; }); cv3.addEventListener('pointercancel', function () { drag = null; });
+      cv3.addEventListener('lostpointercapture', function () { drag = null; }); window.addEventListener('blur', function () { drag = null; }); cv3.addEventListener('contextmenu', function (e) { e.preventDefault(); drag = null; }); cv3.style.userSelect = 'none';
       cv3.addEventListener('wheel', function (e) { Z.zoom = Math.max(0.6, Math.min(1.8, Z.zoom * (e.deltaY < 0 ? 1.08 : 0.93))); e.preventDefault(); }, { passive: false });
       Z.ok = true;
     } catch (e) { Z.ok = false; R = null; }
@@ -172,10 +173,10 @@
     var back = 330 / zm, up = 190 / zm, yaw = Z.yaw, sy = Math.sin(yaw), cy = Math.cos(yaw);
     var tp = new THREE.Vector3(cam.x, 0, cam.y);
     // מצלמה מאחורי הדמות (כמו בגוף שלישי), מביטה קדימה לאן שהיא "מסתכלת"
-    // מקשי ימינה/שמאלה מסובבים את המבט (לא בזמן מיני-משחק)
+    // חצים ימינה/שמאלה מסובבים את המבט (לא בזמן מיני-משחק)
     if (window.MM_TURN !== false && S.phase === 'play' && typeof keys !== 'undefined' && (typeof miniOpen === 'undefined' || miniOpen === null)) {
-      var turn = (keys.has(KEYS.left) || keys.has('ArrowLeft') ? 1 : 0) - (keys.has(KEYS.right) || keys.has('ArrowRight') ? 1 : 0);
-      if (turn) { yaw = Z.yaw += turn * 2.4 * Math.min(0.05, o.dt || 0.016); sy = Math.sin(yaw); cy = Math.cos(yaw); if (typeof sendInput === 'function') sendInput(); }
+      var turn = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0);
+      if (turn) { yaw = Z.yaw += turn * 2.4 * Math.min(0.1, o.dt || 0.016); sy = Math.sin(yaw); cy = Math.cos(yaw); if (typeof sendInput === 'function') sendInput(); }
     }
     var eye = Z.view !== 'out';
     var want = new THREE.Vector3(tp.x + sy * back, up, tp.z + cy * back), look = new THREE.Vector3(tp.x - sy * 90, 30, tp.z - cy * 90);
